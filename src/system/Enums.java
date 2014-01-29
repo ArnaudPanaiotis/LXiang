@@ -6,13 +6,13 @@
  * @about : 
  * See main class lxiang.Lxiang for more informations
  */
-package system.data;
+package system;
 
 /**
  * @author Arno
- * @date 28/01.2014
+ * @date 28/01/2014
  */
-public  class Enums {
+public class Enums {
     
     //Enums types to describe the object
     public enum Forme {SQUARE, ROND, TRIANGLE};
