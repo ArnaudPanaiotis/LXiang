@@ -37,51 +37,12 @@ public class Grille {
         hashtable = new Hashtable<Double, Integer>();
         grille = new Case[X*Y];
         for (int i = 0; i<X*Y; i++){
-            grille[i] = new Case(2^i);
+            grille[i] = new Case(2^i, i);
         }
         asBeenFulled = false;
     }
     
-    /**
-     * Return the indice of the case at the left of the case given in parameter
-     * @param indice : the indice of the current case in the array
-     */
-    private int getLeftCase(int indice) throws WrongAccessException{
-        if (indice % 7 == 0)
-            throw new WrongAccessException();
-        return indice -1;
-    }
     
-    /**
-     * Return the indice of the case at the right of the case given in parameter
-     * @param indice : the indice of the current case in the array
-     */
-    private int getRightCase(int indice) throws WrongAccessException{
-        if (indice % 7 == 6)
-            throw new WrongAccessException();
-        return indice +1;
-    }
-    
-    /**
-     * Return the indice of the case at the top of the case given in parameter
-     * @param indice : the indice of the current case in the array
-     */
-    private int getTopCase(int indice) throws WrongAccessException{
-        if (indice <7)
-            throw new WrongAccessException();
-        return indice -7;
-    }
-    
-    /**
-     * Return the indice of the case at the bottom of the case given in 
-     * parameter
-     * @param indice : the indice of the current case in the array
-     */
-    private int getBotCase(int indice) throws WrongAccessException{
-        if (indice >35)
-            throw new WrongAccessException();
-        return indice +7;
-    }
     
     /**
      * @return the hash of the current grille
@@ -126,12 +87,183 @@ public class Grille {
   
     private int calculateRecursively(){
         int tempMaxScore = 0;
+        int compareTmp;
+        Case    caseFirst,          //the first case of the two
+                caseBot,            //the case direclty under the first
+                caseBotThenRight,   //the case on right of a free case at bot
+                caseTop,            //the case at top (not used for recursiv calls)
+                caseTopThenRight,   //the case accessible by top then right
+                caseRight,          //the case direclty at right of the first
+                caseRightThenTop,   //the case on top of a free case at right
+                caseRightThenBot;   //the case on bot of a free case at right
+                //NB : others access to second case are given by changing the first
+        //for each 1st case clicked
         for (int first = 0; first<X*Y; first++){
-            //for each 1st case clicked
+            //check if this case is free
+            if (grille[first].isAble()){
+                caseFirst = grille[first];
+            } else {
+                break; //unneeded case consideration
+            }
+            
+            
+            
+            
+            /*
+             * START OF LOOP FOR BOT ACCESS
+             */
+            //loop to get all cases accessible by bot
+            try {
+                caseBot = grille[caseFirst.getBotCaseIndice()];
+            } catch (WrongAccessException w){caseBot = null;}
+            while (caseBot != null && ! caseBot.isAble()) {
+                
+                //loop to get accessible by bot then right
+                try {
+                    caseBotThenRight = grille[caseBot.getRightCaseIndice()];
+                } catch (WrongAccessException w){caseBotThenRight = null;}
+                while (caseBotThenRight != null && ! caseBotThenRight.isAble()) {
+                    //search for a able right case
+                    try{
+                        caseBotThenRight = grille[caseBotThenRight.getRightCaseIndice()];
+                    } catch (WrongAccessException w){caseBotThenRight = null;}
+                }
+                //check if there is a case at bot then right is able to recusriv call
+                if (caseBotThenRight != null){
+                    compareTmp = this.calculateScoreWith2Case(  
+                                        caseFirst.getIndice(),
+                                        caseBotThenRight.getIndice());
+                    if (compareTmp > tempMaxScore){
+                        tempMaxScore = compareTmp;
+                    }
+                }
+                           
+                //change the bot case
+                try{
+                    caseBot = grille[caseBot.getBotCaseIndice()];
+                } catch (WrongAccessException w){caseBot = null;}
+            }
+            //check if there is a case at bot able to recusriv call
+            if (caseBot != null){
+                compareTmp = this.calculateScoreWith2Case(  
+                                    caseFirst.getIndice(),
+                                    caseBot.getIndice());
+                if (compareTmp > tempMaxScore){
+                    tempMaxScore = compareTmp;
+                }
+            }
+            
+            
+            /*
+             * START OF LOOP FOR TOP ACCESS
+             */
+            //loop to get all cases accessible by top
+            try {
+                caseTop = grille[caseFirst.getTopCaseIndice()];
+            } catch (WrongAccessException w){caseTop = null;}
+            while (caseTop != null && ! caseTop.isAble()) {
+                
+                //loop to get accessible by top then right
+                try {
+                    caseTopThenRight = grille[caseTop.getRightCaseIndice()];
+                } catch (WrongAccessException w){caseTopThenRight = null;}
+                while (caseTopThenRight != null && ! caseTopThenRight.isAble()) {
+                    //search for a able right case
+                    try{
+                        caseTopThenRight = grille[caseTopThenRight.getRightCaseIndice()];
+                    } catch (WrongAccessException w){caseTopThenRight = null;}
+                }
+                //check if there is a case at top then right is able to recusriv call
+                if (caseTopThenRight != null){
+                    compareTmp = this.calculateScoreWith2Case(  
+                                        caseFirst.getIndice(),
+                                        caseTopThenRight.getIndice());
+                    if (compareTmp > tempMaxScore){
+                        tempMaxScore = compareTmp;
+                    }
+                }
+                           
+                //change the top case
+                try{
+                    caseTop = grille[caseTop.getTopCaseIndice()];
+                } catch (WrongAccessException w){caseTop = null;}
+            }
+            
+            
+            
+            /*
+             * START OF LOOP FOR RIGHT ACCESS
+             */
+            //loop to get all cases accessible by top
+            try {
+                caseRight = grille[caseFirst.getRightCaseIndice()];
+            } catch (WrongAccessException w){caseRight = null;}
+            while (caseRight != null && ! caseRight.isAble()) {
+                
+                //loop to get accessible by right then top
+                try {
+                    caseRightThenTop = grille[caseRight.getTopCaseIndice()];
+                } catch (WrongAccessException w){caseRightThenTop = null;}
+                while (caseRightThenTop != null && ! caseRightThenTop.isAble()) {
+                    //search for a able right case
+                    try{
+                        caseRightThenTop = grille[caseRightThenTop.getTopCaseIndice()];
+                    } catch (WrongAccessException w){caseRightThenTop = null;}
+                }
+                //check if there is a case at right then top is able to recusriv call
+                if (caseRightThenTop != null){
+                    compareTmp = this.calculateScoreWith2Case(  
+                                        caseFirst.getIndice(),
+                                        caseRightThenTop.getIndice());
+                    if (compareTmp > tempMaxScore){
+                        tempMaxScore = compareTmp;
+                    }
+                }
+                
+                //loop to get accessible by right then bot
+                try {
+                    caseRightThenBot = grille[caseRight.getBotCaseIndice()];
+                } catch (WrongAccessException w){caseRightThenBot = null;}
+                while (caseRightThenBot != null && ! caseRightThenBot.isAble()) {
+                    //search for a able right case
+                    try{
+                        caseRightThenBot = grille[caseRightThenBot.getBotCaseIndice()];
+                    } catch (WrongAccessException w){caseRightThenBot = null;}
+                }
+                //check if there is a case at right then top is able to recusriv call
+                if (caseRightThenBot != null){
+                    compareTmp = this.calculateScoreWith2Case(  
+                                        caseFirst.getIndice(),
+                                        caseRightThenBot.getIndice());
+                    if (compareTmp > tempMaxScore){
+                        tempMaxScore = compareTmp;
+                    }
+                }
+                           
+                //change the right case
+                try{
+                    caseRight = grille[caseRight.getRightCaseIndice()];
+                } catch (WrongAccessException w){caseRight = null;}
+            }
+            
+            //check if there is a case at bot able to recusriv call
+            if (caseRight != null){
+                compareTmp = this.calculateScoreWith2Case(  
+                                    caseFirst.getIndice(),
+                                    caseRight.getIndice());
+                if (compareTmp > tempMaxScore){
+                    tempMaxScore = compareTmp;
+                }
+            }
+            
             
         }
-        return 0;
+        return tempMaxScore;
     }
+  
+    
+    
+    
     
     /**
      * Check if the grille have been completed, modify asBeenFulled if true
