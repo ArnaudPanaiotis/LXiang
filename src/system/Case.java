@@ -12,7 +12,7 @@ import error.WrongAccessException;
 
 /**
  * @author Arno
- * @date 28/01/2014
+ * @date 09/02/2014
  */
 
 
@@ -20,7 +20,7 @@ public class Case {
 
     
     //Unique id used to remove some useless call
-    private double id;
+    private long id;
     private int indice;
     private Piece piece;
     
@@ -28,12 +28,12 @@ public class Case {
      * Constructor
      * @param id ths unique id in function of the case
      */
-    public Case (int id, int indice){
+    Case (long id, int indice){
         this.id = id;
         this.indice = indice;
     }
     
-    public double getId(){return id;}
+    public long getId(){return id;}
     
     public Piece getPiece(){return this.piece;}
     
@@ -41,7 +41,10 @@ public class Case {
      * Put the piece at this case
      * @param piece 
      */
-    public void affectPiece(Piece piece){this.piece = piece;}
+    public void affectPiece(Piece piece){
+        this.piece = piece;
+        this.piece.affect();
+    }
     
     /**
      * Mark this case as not having piece on it
@@ -94,7 +97,7 @@ public class Case {
      * @return the indice of the case at the bottom of this case
      */
     public int getBotCaseIndice() throws WrongAccessException{
-        if (this.indice >35)
+        if (this.indice >=35)
             throw new WrongAccessException();
         return this.indice +7;
     }

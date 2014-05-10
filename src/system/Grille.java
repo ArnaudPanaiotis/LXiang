@@ -8,18 +8,18 @@
  */
 package system;
 
-import java.util.Hashtable;
+import java.util.*;
 
 import error.*;
 
 /**
  * @author Arno
- * @date 28/01/2014
+ * @date 09/02/2014
  */
 public class Grille {
    
     //hashtable : a table of hash used to remove some redoundant recursiv calls
-    private static Hashtable<Double, Integer> hashtable;
+    private static Hashtable<Long, Return> hashtable;
     // X (resp Y) is the number of column (resp line)
     private final int X = 6;
     private final int Y = 7;
@@ -29,15 +29,72 @@ public class Grille {
     //A boolean present to check if the grille were fulled before start
     private boolean asBeenFulled;
     
+    private Return completeSolution = null;
+
+    
+    
+    
+    private class Return {
+        public int score = 0;
+        public ArrayList<Couple> list;
+        
+        private class Couple {
+            public int first;
+            public int second;
+            
+            public Couple(int first, int second){
+                this.first = first;
+                this.second = second;
+            }
+        }
+        
+        public void addNewCouple(int first, int second){
+            list.add(0, new Couple(first, second));
+        }       
+        
+        public int getFirstFromIndice (int indice){
+            return list.get(indice).first;
+        }
+        
+        public int getSecondFromIndice (int indice){
+            return list.get(indice).second;
+        }
+        
+        @Override
+        public Return clone(){
+            Return clone = new Return();
+            clone.score = this.score;
+            clone.list = new ArrayList();
+            for (int i = 0; i < list.size(); i++) {
+                clone.list.add(i, list.get(i));
+            }
+            return clone;
+        }
+        
+        public void display(long hash){
+            System.out.println("Score : "+score+" with hash : "+(long) hash);
+            System.out.print("List :");
+            for (int i = 0; i < list.size(); i++){
+                System.out.print(list.get(i).first+" "+list.get(i).second+" / ");
+            }
+            System.out.println();
+            
+        }
+
+    }
+    
+    
     /**
      * Constructor
      * Initialize all the requested data for Grille
      */    
     public Grille(){
-        hashtable = new Hashtable<Double, Integer>();
+        hashtable = new Hashtable<Long, Return>();
         grille = new Case[X*Y];
+        long pow = 1L;
         for (int i = 0; i<X*Y; i++){
-            grille[i] = new Case(2^i, i);
+            grille[i] = new Case(pow, i);
+            pow *= 2L;
         }
         asBeenFulled = false;
     }
@@ -47,11 +104,13 @@ public class Grille {
     /**
      * @return the hash of the current grille
      */
-    private int calculateHash(){
-        int tmp = 0;
-        for (int i = 0; i<X*Y; i++){
-            if(grille[i].isAble())
-                tmp += 2^i;
+    private long calculateHash(){
+        long tmp = 0L;
+        long pow = 1L;
+        for (int i = 0; i<42/*X*Y*/; i++){
+            if(! grille[i].isAble())
+                tmp = (long)pow + (long)tmp;
+            pow *= 2;
         } 
         return tmp;
     }
@@ -60,34 +119,57 @@ public class Grille {
      * Give the score of the configuration without cases A and B
      * @param A the indice of the &st case
      * @param B the indice of the 2nd case
-     * @return the score with the under grille
+     * @return the score with the under grille, and the list of action to do
      */
-    private int calculateScoreWith2Case (int A, int B){
-        int ret;
-        double hash;
+    private Return calculateScoreWith2Case (int A, int B){
+        Return ret, retBis;
+        long hashWithoutAB, hashWithAB;
         
+        hashWithAB = (long) this.calculateHash();
         //Unaffect those 2 cases to have a hash like their aren't here
         grille[A].unable();
         grille[B].unable();
-        hash = this.calculateHash();
-        if (hashtable.containsKey(hash)){
+        hashWithoutAB = (long) this.calculateHash();
+        if (hashtable.containsKey(hashWithoutAB)){
             //case this configuration were even calculated
-            ret = hashtable.get(hash);
+            ret = hashtable.get((long) hashWithoutAB);
+            /*System.out.println("Add from hash "+A+" "+B);
+            ret.display((long) hashWithAB);
+            System.out.println();*/
+            
         } else {
             //case this configuration need to be calculated
-            ret = this.calculateRecursively();
-            hashtable.put(hash, ret);
+            ret = this.calculateRecursively();    
+            /*System.out.println("Add from recursiv call "+A+" "+B);
+            ret.display((long) hashWithAB);
+            System.out.println();*/
+            hashtable.put((long) hashWithoutAB, ret);
         }
-        
+            
+        //clone the solution for returning
+        retBis = ret.clone();
+        retBis.score += grille[A].getPiece().calculateScore(
+                grille[B].getPiece());
+        retBis.addNewCouple(A, B);
+
         //Reaffect the 2 cases
         grille[A].able();
         grille[B].able();
-        return ret;
+        
+        return retBis;
     }
   
-    private int calculateRecursively(){
-        int tempMaxScore = 0;
-        int compareTmp;
+    /**
+     * Function to calculate the two case to select for a grille given
+     * @return the Return solution with the hugher score for this grille 
+     */
+    private Return calculateRecursively(){
+        Return tempMaxSolution = new Return();
+        tempMaxSolution.list = new ArrayList();
+        
+        Return compareTmp = new Return();
+        compareTmp.score = 0;
+        
         Case    caseFirst,          //the first case of the two
                 caseBot,            //the case direclty under the first
                 caseBotThenRight,   //the case on right of a free case at bot
@@ -103,7 +185,7 @@ public class Grille {
             if (grille[first].isAble()){
                 caseFirst = grille[first];
             } else {
-                break; //unneeded case consideration
+                continue; //unneeded case consideration
             }
             
             
@@ -133,8 +215,8 @@ public class Grille {
                     compareTmp = this.calculateScoreWith2Case(  
                                         caseFirst.getIndice(),
                                         caseBotThenRight.getIndice());
-                    if (compareTmp > tempMaxScore){
-                        tempMaxScore = compareTmp;
+                    if (compareTmp.score > tempMaxSolution.score){
+                        tempMaxSolution = compareTmp;
                     }
                 }
                            
@@ -148,10 +230,11 @@ public class Grille {
                 compareTmp = this.calculateScoreWith2Case(  
                                     caseFirst.getIndice(),
                                     caseBot.getIndice());
-                if (compareTmp > tempMaxScore){
-                    tempMaxScore = compareTmp;
+                if (compareTmp.score > tempMaxSolution.score){
+                    tempMaxSolution = compareTmp;
                 }
             }
+            
             
             
             /*
@@ -178,10 +261,11 @@ public class Grille {
                     compareTmp = this.calculateScoreWith2Case(  
                                         caseFirst.getIndice(),
                                         caseTopThenRight.getIndice());
-                    if (compareTmp > tempMaxScore){
-                        tempMaxScore = compareTmp;
+                    if (compareTmp.score > tempMaxSolution.score){
+                        tempMaxSolution = compareTmp;
                     }
                 }
+                
                            
                 //change the top case
                 try{
@@ -215,11 +299,12 @@ public class Grille {
                     compareTmp = this.calculateScoreWith2Case(  
                                         caseFirst.getIndice(),
                                         caseRightThenTop.getIndice());
-                    if (compareTmp > tempMaxScore){
-                        tempMaxScore = compareTmp;
+                    if (compareTmp.score > tempMaxSolution.score){
+                        tempMaxSolution = compareTmp;                       
                     }
                 }
                 
+                               
                 //loop to get accessible by right then bot
                 try {
                     caseRightThenBot = grille[caseRight.getBotCaseIndice()];
@@ -235,11 +320,12 @@ public class Grille {
                     compareTmp = this.calculateScoreWith2Case(  
                                         caseFirst.getIndice(),
                                         caseRightThenBot.getIndice());
-                    if (compareTmp > tempMaxScore){
-                        tempMaxScore = compareTmp;
+                    if (compareTmp.score > tempMaxSolution.score){
+                        tempMaxSolution = compareTmp;
                     }
                 }
-                           
+                
+                                           
                 //change the right case
                 try{
                     caseRight = grille[caseRight.getRightCaseIndice()];
@@ -251,18 +337,26 @@ public class Grille {
                 compareTmp = this.calculateScoreWith2Case(  
                                     caseFirst.getIndice(),
                                     caseRight.getIndice());
-                if (compareTmp > tempMaxScore){
-                    tempMaxScore = compareTmp;
+                if (compareTmp.score > tempMaxSolution.score){
+                    tempMaxSolution = compareTmp;
                 }
             }
+           
             
             
         }
-        return tempMaxScore;
+        return tempMaxSolution;
     }
   
     
-    
+    /**
+     * Affect a new Piece to a case by the case indice
+     * @param p
+     * @param indice 
+     */
+    public void affectPieceToCase (Piece p, int indice){
+        grille[indice].affectPiece(p);
+    }
     
     
     /**
@@ -270,8 +364,9 @@ public class Grille {
      */
     private void checkFull(){
         for (int i = 0; i<X*Y; i++){
-            if (! grille[i].isAble())
+            if (! grille[i].isAble()) {
                 return;
+            }
         }
         asBeenFulled = true;
     }
@@ -284,6 +379,36 @@ public class Grille {
         this.checkFull();
         if (! asBeenFulled)
             throw new MissingInitializationException();
-        return this.calculateRecursively();
+        
+        if (completeSolution == null){
+            completeSolution = this.calculateRecursively();
+        }
+        
+        return completeSolution.score;
     }
+    
+    
+    public int [] getListToPlay() throws MissingInitializationException{
+        
+        int array [] = new int [44];
+        
+        this.checkFull();
+        if (! asBeenFulled)
+            throw new MissingInitializationException();
+        
+        if (completeSolution == null){
+            completeSolution = this.calculateRecursively();
+        }
+        
+        System.out.println("DEBUG : nombre de couple solution : "+completeSolution.list.size());
+        
+        for (int i = 0; i < completeSolution.list.size(); i++) {
+            array[2*i] = completeSolution.getFirstFromIndice(i);
+            array[2*i+1] = completeSolution.getSecondFromIndice(i);
+        }
+        
+        return array;
+    }
+    
+     
 }
