@@ -24,7 +24,5 @@ public class LXiang {
      */
     public static void main(String[] args) {
         // TODO code application logic here
-		
-		// Ceci est une autre modif
     }
 }
